@@ -1,7 +1,6 @@
 import os
 import json
 import re
-import asyncio
 import sqlite3
 from functools import wraps
 from typing import Dict, Optional, List, Tuple
@@ -10,18 +9,9 @@ from contextlib import contextmanager
 
 import requests
 from flask import Flask, request, jsonify
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 
 # ==================== KONFIGURIMI ====================
 app = Flask(__name__)
-
-# Rate limiting për siguri
-limiter = Limiter(
-    app=app,
-    key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"]
-)
 
 # Konfigurimi i logging-ut profesional
 import logging
@@ -173,21 +163,11 @@ db = Database()
 def admin_required(f):
     """Dekorator për të kontrolluar nëse përdoruesi është admin"""
     @wraps(f)
-    def decorated_function(chat_id: int, user_id: int, *args, **kwargs):
+    def decorated_function(chat_id, user_id, *args, **kwargs):
         if not is_admin(chat_id, user_id):
             send_message(chat_id, "👑 Vetëm administratorët mund ta përdorin këtë komandë!")
             return None
         return f(chat_id, user_id, *args, **kwargs)
-    return decorated_function
-
-def group_only(f):
-    """Dekorator për të kontrolluar nëse komanda përdoret në grup"""
-    @wraps(f)
-    def decorated_function(chat_type: str, *args, **kwargs):
-        if chat_type not in ['group', 'supergroup']:
-            send_message(args[0] if args else 0, "⚠️ Ky funksion punon vetëm në grupe!")
-            return None
-        return f(*args, **kwargs)
     return decorated_function
 
 # ==================== FUNKSIONET KRYESORE ====================
@@ -282,10 +262,6 @@ def is_admin(chat_id: int, user_id: int) -> bool:
     if not TOKEN:
         return False
     
-    # Cache për 5 minuta
-    cache_key = f"admin_{chat_id}_{user_id}"
-    # Në një implementim real, do përdornim Redis ose cache tjetër
-    
     url = f"https://api.telegram.org/bot{TOKEN}/getChatAdministrators"
     try:
         response = requests.post(url, json={'chat_id': chat_id}, timeout=10)
@@ -353,7 +329,6 @@ LANGUAGES = {
 
 # ==================== ENDPOINTI KRYESOR ====================
 @app.route('/', methods=['POST', 'GET'])
-@limiter.limit("100 per minute")
 def index():
     """Endpoint kryesor për webhook"""
     if request.method == 'GET':
@@ -872,7 +847,7 @@ def index():
                     
                     send_message(chat_id, stats_text, reply_to_message_id=msg_id)
         
-        # Filtra për fjalë të ndaluara
+        # Filtra për fjalë të ndaluara dhe kontroll për heshtje
         elif text:
             # Kontrollo nëse përdoruesi është i heshtur
             with db.get_connection() as conn:
