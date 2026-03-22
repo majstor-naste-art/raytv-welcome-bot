@@ -25,8 +25,7 @@ class BotData:
         self.filters: Dict[str, Dict[str, str]] = {}
         self.warnings: Dict[str, Dict[int, int]] = {}
         self.muted_users: Dict[str, Dict[int, datetime]] = {}
-        self.banned_words: Dict[str, List[str]] = {}
-        self.group_languages: Dict[str, str] = {}  # 'sq' ose 'mk'
+        self.group_languages: Dict[str, str] = {}
 
 data = BotData()
 
@@ -79,7 +78,7 @@ def send_message(chat_id: int, text: str, reply_to_message_id: Optional[int] = N
     
     try:
         response = requests.post(url, json=payload, timeout=10)
-        logger.info(f"Message sent to {chat_id}: {response.status_code}")
+        logger.info(f"Message sent to {chat_id}")
         return response.json()
     except Exception as e:
         logger.error(f"Error sending message: {e}")
@@ -93,7 +92,6 @@ def delete_message(chat_id: int, message_id: int):
     url = f"https://api.telegram.org/bot{TOKEN}/deleteMessage"
     try:
         requests.post(url, json={'chat_id': chat_id, 'message_id': message_id}, timeout=10)
-        logger.info(f"Message {message_id} deleted in {chat_id}")
     except Exception as e:
         logger.error(f"Error deleting message: {e}")
 
@@ -177,7 +175,6 @@ def index():
                 first_name = member.get('first_name', 'Përdorues')
                 username = member.get('username', first_name)
                 
-                # Mesazhi i mirëseardhjes
                 if chat_id_str in data.welcome_messages:
                     welcome = data.welcome_messages[chat_id_str]
                     welcome = welcome.replace('{user}', f'@{username}')
@@ -188,7 +185,6 @@ def index():
                 
                 send_message(chat_id, welcome)
                 
-                # Rregullat
                 if chat_id_str in data.rules:
                     send_message(chat_id, f"{LANGUAGES[lang]['rules']}\n{data.rules[chat_id_str]}")
             
@@ -241,7 +237,7 @@ def index():
                 if chat_type not in ['group', 'supergroup']:
                     send_message(chat_id, "⚠️ Kjo komandë funksionon vetëm në grupe!", 
                                reply_to_message_id=message_id)
-                elif not await is_admin(chat_id, user_id):
+                elif not is_admin(chat_id, user_id):
                     send_message(chat_id, "👑 Vetëm administratorët mund të përdorin këtë komandë!", 
                                reply_to_message_id=message_id)
                 elif not args:
@@ -263,7 +259,7 @@ def index():
                 if chat_type not in ['group', 'supergroup']:
                     send_message(chat_id, "⚠️ Kjo komandë funksionon vetëm në grupe!", 
                                reply_to_message_id=message_id)
-                elif not await is_admin(chat_id, user_id):
+                elif not is_admin(chat_id, user_id):
                     send_message(chat_id, "👑 Vetëm administratorët mund të përdorin këtë komandë!", 
                                reply_to_message_id=message_id)
                 elif not args:
@@ -287,7 +283,7 @@ def index():
                 if chat_type not in ['group', 'supergroup']:
                     send_message(chat_id, "⚠️ Kjo komandë funksionon vetëm në grupe!", 
                                reply_to_message_id=message_id)
-                elif not await is_admin(chat_id, user_id):
+                elif not is_admin(chat_id, user_id):
                     send_message(chat_id, "👑 Vetëm administratorët mund të përdorin këtë komandë!", 
                                reply_to_message_id=message_id)
                 elif len(args) < 2:
@@ -308,7 +304,7 @@ def index():
                 if not message.get('reply_to_message'):
                     send_message(chat_id, "⚠️ Përgjigjuni mesazhit të përdoruesit që dëshironi të ndaloni.", 
                                reply_to_message_id=message_id)
-                elif not await is_admin(chat_id, user_id):
+                elif not is_admin(chat_id, user_id):
                     send_message(chat_id, "👑 Vetëm administratorët mund të përdorin këtë komandë!", 
                                reply_to_message_id=message_id)
                 else:
@@ -323,12 +319,11 @@ def index():
                 if not message.get('reply_to_message'):
                     send_message(chat_id, "⚠️ Përgjigjuni mesazhit të përdoruesit që dëshironi të përjashtoni.", 
                                reply_to_message_id=message_id)
-                elif not await is_admin(chat_id, user_id):
+                elif not is_admin(chat_id, user_id):
                     send_message(chat_id, "👑 Vetëm administratorët mund të përdorin këtë komandë!", 
                                reply_to_message_id=message_id)
                 else:
                     target_id = message['reply_to_message']['from']['id']
-                    # Ban + Unban = Kick
                     url_ban = f"https://api.telegram.org/bot{TOKEN}/banChatMember"
                     url_unban = f"https://api.telegram.org/bot{TOKEN}/unbanChatMember"
                     try:
@@ -343,11 +338,11 @@ def index():
                 if not message.get('reply_to_message'):
                     send_message(chat_id, "⚠️ Përgjigjuni mesazhit të përdoruesit që dëshironi të heshtni.", 
                                reply_to_message_id=message_id)
-                elif not await is_admin(chat_id, user_id):
+                elif not is_admin(chat_id, user_id):
                     send_message(chat_id, "👑 Vetëm administratorët mund të përdorin këtë komandë!", 
                                reply_to_message_id=message_id)
                 else:
-                    duration = 300  # 5 minuta default
+                    duration = 300
                     if args and args[0].isdigit():
                         duration = int(args[0]) * 60
                     
@@ -362,7 +357,7 @@ def index():
                 if not message.get('reply_to_message'):
                     send_message(chat_id, "⚠️ Përgjigjuni mesazhit të përdoruesit që dëshironi të paralajmëroni.", 
                                reply_to_message_id=message_id)
-                elif not await is_admin(chat_id, user_id):
+                elif not is_admin(chat_id, user_id):
                     send_message(chat_id, "👑 Vetëm administratorët mund të përdorin këtë komandë!", 
                                reply_to_message_id=message_id)
                 else:
@@ -396,28 +391,27 @@ def index():
         return jsonify({'ok': True})
         
     except Exception as e:
-        logger.error(f"Error in index: {e}", exc_info=True)
+        logger.error(f"Error: {e}", exc_info=True)
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 @app.route('/callback', methods=['POST'])
 def callback():
     """Për butonat inline"""
     try:
-        callback_data = request.get_json()
-        if callback_data and 'callback_query' in callback_data:
-            query = callback_data['callback_query']
+        data_cb = request.get_json()
+        if data_cb and 'callback_query' in data_cb:
+            query = data_cb['callback_query']
             chat_id = query['message']['chat']['id']
             message_id = query['message']['message_id']
-            data_cb = query['data']
+            cb_data = query['data']
             
-            if data_cb.startswith('lang_'):
-                lang_code = data_cb.split('_')[1]
+            if cb_data.startswith('lang_'):
+                lang_code = cb_data.split('_')[1]
                 data.group_languages[str(chat_id)] = lang_code
                 
                 lang_name = "Shqip" if lang_code == 'sq' else "Македонски"
-                send_message(chat_id, f"🌐 Gjuha u ndryshua në: {lang_name}\n🌐 Јазикот е променет во: {lang_name}")
+                send_message(chat_id, f"🌐 Gjuha u ndryshua në: {lang_name}")
                 
-                # Fshi mesazhin e vjetër
                 delete_message(chat_id, message_id)
         
         return jsonify({'ok': True})
