@@ -65,7 +65,6 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             
-            # Tabela për grupet
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS groups (
                     chat_id TEXT PRIMARY KEY,
@@ -75,7 +74,6 @@ class Database:
                 )
             ''')
             
-            # Tabela për mirëseardhjet
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS welcome_messages (
                     chat_id TEXT PRIMARY KEY,
@@ -84,7 +82,6 @@ class Database:
                 )
             ''')
             
-            # Tabela për rregullat
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS rules (
                     chat_id TEXT PRIMARY KEY,
@@ -92,7 +89,7 @@ class Database:
                 )
             ''')
             
-            # Tabela për filtrat (me mbështetje për foto dhe GIF)
+            # Tabela për filtrat (si Rose)
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS filters (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -108,7 +105,6 @@ class Database:
                 )
             ''')
             
-            # Tabela për paralajmërimet
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS warnings (
                     chat_id TEXT,
@@ -118,7 +114,6 @@ class Database:
                 )
             ''')
             
-            # Tabela për përdoruesit e heshtur
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS muted_users (
                     chat_id TEXT,
@@ -135,7 +130,6 @@ db = Database()
 
 # ==================== FUNKSIONET TELEGRAM ====================
 def send_message(chat_id: int, text: str, reply_to_message_id: Optional[int] = None, parse_mode: str = 'HTML'):
-    """Dërgon mesazh tekst"""
     if not TOKEN:
         return False
     
@@ -152,7 +146,6 @@ def send_message(chat_id: int, text: str, reply_to_message_id: Optional[int] = N
         return False
 
 def send_photo(chat_id: int, photo_url: str, caption: str = None, reply_to_message_id: Optional[int] = None):
-    """Dërgon foto"""
     if not TOKEN:
         return False
     
@@ -168,15 +161,12 @@ def send_photo(chat_id: int, photo_url: str, caption: str = None, reply_to_messa
     
     try:
         response = requests.post(url, json=payload, timeout=10)
-        if not response.ok:
-            logger.error(f"Error sending photo: {response.text}")
         return response.ok
     except Exception as e:
         logger.error(f"Error sending photo: {e}")
         return False
 
 def send_gif(chat_id: int, gif_url: str, caption: str = None, reply_to_message_id: Optional[int] = None):
-    """Dërgon GIF/animacion"""
     if not TOKEN:
         return False
     
@@ -192,15 +182,12 @@ def send_gif(chat_id: int, gif_url: str, caption: str = None, reply_to_message_i
     
     try:
         response = requests.post(url, json=payload, timeout=10)
-        if not response.ok:
-            logger.error(f"Error sending GIF: {response.text}")
         return response.ok
     except Exception as e:
         logger.error(f"Error sending GIF: {e}")
         return False
 
 def delete_message(chat_id: int, message_id: int):
-    """Fshin mesazhin"""
     if not TOKEN:
         return False
     
@@ -213,7 +200,6 @@ def delete_message(chat_id: int, message_id: int):
         return False
 
 def ban_user(chat_id: int, user_id: int):
-    """Ndalon përdoruesin"""
     if not TOKEN:
         return False
     
@@ -226,7 +212,6 @@ def ban_user(chat_id: int, user_id: int):
         return False
 
 def kick_user(chat_id: int, user_id: int):
-    """Përjashton përdoruesin"""
     if not TOKEN:
         return False
     
@@ -240,7 +225,6 @@ def kick_user(chat_id: int, user_id: int):
     return False
 
 def is_admin(chat_id: int, user_id: int):
-    """Kontrollon nëse përdoruesi është admin"""
     if not TOKEN:
         return False
     
@@ -255,7 +239,6 @@ def is_admin(chat_id: int, user_id: int):
     return False
 
 def get_lang(chat_id: int):
-    """Merr gjuhën e grupit"""
     with db.get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('SELECT language FROM groups WHERE chat_id = ?', (str(chat_id),))
@@ -276,7 +259,7 @@ LANGUAGES = {
         'admin_only': "👑 Vetëm administratorët!",
         'group_only': "⚠️ Funksionon vetëm në grupe!",
         'need_reply': "⚠️ Përgjigjuni mesazhit!",
-        'filter_usage': "📝 **Përdorimi i /setfilter:**\n\n**Për tekst:**\n/setfilter fjalë përgjigje\n\n**Për foto:**\n/setfilter fjalë photo:URL_foto\n\n**Për GIF:**\n/setfilter fjalë gif:URL_GIF\n\n**Shembuj:**\n/setfilter dobro vecer gif:https://media.tenor.com/example.gif\n/setfilter mirmengjes photo:https://i.imgur.com/morning.jpg\n/setfilter hello Përshëndetje!",
+        'filter_usage': "📝 **Përdorimi i /filter:**\n\n**Për tekst:**\n/filter fjalë përgjigje\n\n**Për foto:**\n/filter fjalë photo:URL_foto\n\n**Për GIF:**\n/filter fjalë gif:URL_GIF\n\n**Shembuj:**\n/filter dobro vecer gif:https://media.tenor.com/example.gif\n/filter mirmengjes photo:https://i.imgur.com/morning.jpg\n/filter hello Përshëndetje!",
         'filter_set_text': "✅ Filtri për '{word}' u vendos!",
         'filter_set_photo': "✅ Filtri për '{word}' u vendos me foto!",
         'filter_set_gif': "✅ Filtri për '{word}' u vendos me GIF!",
@@ -286,6 +269,7 @@ LANGUAGES = {
         'muted_warning': "🔇 Ju jeni të heshtur! Nuk mund të dërgoni mesazhe.",
         'error_general': "❌ Ndodhi një gabim!",
         'stats': "📊 **Statistikat e Grupit**\n\n",
+        'no_filter_word': "⚠️ Ju lutem vendosni një fjalë kyçe dhe përgjigje!\nPërdorimi: /filter fjalë përgjigje",
     },
     'mk': {
         'welcome': "👋 Добредојде во групата!",
@@ -299,7 +283,7 @@ LANGUAGES = {
         'admin_only': "👑 Само администратори!",
         'group_only': "⚠️ Функционира само во групи!",
         'need_reply': "⚠️ Одговорете на пораката!",
-        'filter_usage': "📝 **Употреба на /setfilter:**\n\n**За текст:**\n/setfilter збор одговор\n\n**За слика:**\n/setfilter збор photo:URL_слика\n\n**За GIF:**\n/setfilter збор gif:URL_GIF\n\n**Примери:**\n/setfilter добровечер gif:https://media.tenor.com/example.gif\n/setfilter доброутро photo:https://i.imgur.com/morning.jpg\n/setfilter здраво Здраво!",
+        'filter_usage': "📝 **Употреба на /filter:**\n\n**За текст:**\n/filter збор одговор\n\n**За слика:**\n/filter збор photo:URL_слика\n\n**За GIF:**\n/filter збор gif:URL_GIF\n\n**Примери:**\n/filter добровечер gif:https://media.tenor.com/example.gif\n/filter доброутро photo:https://i.imgur.com/morning.jpg\n/filter здраво Здраво!",
         'filter_set_text': "✅ Филтерот за '{word}' е поставен!",
         'filter_set_photo': "✅ Филтерот за '{word}' е поставен со слика!",
         'filter_set_gif': "✅ Филтерот за '{word}' е поставен со GIF!",
@@ -309,6 +293,7 @@ LANGUAGES = {
         'muted_warning': "🔇 Вие сте занемени! Не можете да испраќате пораки.",
         'error_general': "❌ Се случи грешка!",
         'stats': "📊 **Статистики на групата**\n\n",
+        'no_filter_word': "⚠️ Ве молиме внесете збор и одговор!\nУпотреба: /filter збор одговор",
     }
 }
 
@@ -319,8 +304,8 @@ def index():
         return jsonify({
             'status': 'running',
             'token_configured': bool(TOKEN),
-            'version': '2.2.0',
-            'features': ['text_filters', 'photo_filters', 'gif_filters', 'welcome', 'rules', 'moderation']
+            'version': '2.3.0',
+            'features': ['filters_like_rose', 'text_filters', 'photo_filters', 'gif_filters', 'welcome', 'rules']
         })
     
     if not TOKEN:
@@ -390,32 +375,118 @@ def index():
             # KOMANDA /start DHE /help
             if cmd == '/start' or cmd == '/help':
                 help_text = (
-                    "🤖 **Bot Menaxhimi i Grupeve v2.2**\n\n"
-                    "📋 **Komandat:**\n\n"
+                    "🤖 **Bot Menaxhimi i Grupeve v2.3**\n\n"
+                    "📋 **Komandat (si Rose):**\n\n"
+                    "**🔍 Filtrat:**\n"
+                    "/filter <fjalë> <përgjigje> - Vendos filtër tekst\n"
+                    "/filter <fjalë> photo:<URL> - Vendos filtër me foto\n"
+                    "/filter <fjalë> gif:<URL> - Vendos filtër me GIF\n"
+                    "/stop <fjalë> - Fshin filtër\n"
+                    "/filters - Shfaq të gjithë filtrat\n\n"
                     "**👋 Mirëseardhja:**\n"
-                    "/setwelcome [mesazh] - Vendos mirëseardhjen\n"
+                    "/setwelcome <mesazh> - Vendos mirëseardhjen\n"
                     "/delwelcome - Fshin mirëseardhjen\n\n"
                     "**📜 Rregullat:**\n"
-                    "/setrules [rregullat] - Vendos rregullat\n"
+                    "/setrules <rregullat> - Vendos rregullat\n"
                     "/rules - Shfaq rregullat\n\n"
-                    "**🔍 Filtrat (Tekst, Foto & GIF):**\n"
-                    "/setfilter [fjalë] [përgjigje] - Vendos filtër tekst\n"
-                    "/setfilter [fjalë] photo:[URL] - Vendos filtër me foto\n"
-                    "/setfilter [fjalë] gif:[URL] - Vendos filtër me GIF\n"
-                    "/delfilter [fjalë] - Fshin filtër\n"
-                    "/filters - Shfaq filtrat\n\n"
                     "**⚡ Menaxhimi:**\n"
-                    "/ban - Ndalon përdoruesin (përgjigju mesazhit)\n"
-                    "/kick - Përjashton përdoruesin (përgjigju mesazhit)\n"
-                    "/mute [minuta] - Hesht përdoruesin (default 5 min)\n"
-                    "/unmute - Heq heshtjen (përgjigju mesazhit)\n"
-                    "/warn - Paralajmëron përdoruesin (3 herë = ban)\n"
-                    "/warns - Shfaq paralajmërimet (përgjigju mesazhit)\n\n"
+                    "/ban - Ndalon përdoruesin\n"
+                    "/kick - Përjashton përdoruesin\n"
+                    "/mute [minuta] - Hesht përdoruesin\n"
+                    "/unmute - Heq heshtjen\n"
+                    "/warn - Paralajmëron përdoruesin\n\n"
                     "**🌐 Të tjera:**\n"
                     "/language [sq/mk] - Ndrysho gjuhën\n"
-                    "/stats - Statistikat e grupit"
+                    "/stats - Statistikat"
                 )
                 send_message(chat_id, help_text, reply_to_message_id=msg_id)
+            
+            # KOMANDA /filter (si Rose) - VENDOS FILTER
+            elif cmd == '/filter':
+                if chat_type not in ['group', 'supergroup']:
+                    send_message(chat_id, texts['group_only'], reply_to_message_id=msg_id)
+                elif not is_admin(chat_id, user_id):
+                    send_message(chat_id, texts['admin_only'], reply_to_message_id=msg_id)
+                elif len(args) < 2:
+                    send_message(chat_id, texts['filter_usage'], reply_to_message_id=msg_id, parse_mode='Markdown')
+                else:
+                    keyword = args[0].lower()
+                    response = ' '.join(args[1:])
+                    
+                    # Kontrollo llojin e filtrit
+                    is_photo = response.startswith('photo:')
+                    is_gif = response.startswith('gif:')
+                    photo_url = None
+                    gif_url = None
+                    text_response = response
+                    
+                    if is_photo:
+                        photo_url = response[6:]
+                        text_response = None
+                    elif is_gif:
+                        gif_url = response[4:]
+                        text_response = None
+                    
+                    with db.get_connection() as conn:
+                        cursor = conn.cursor()
+                        cursor.execute('''
+                            INSERT OR REPLACE INTO filters (chat_id, keyword, response, is_photo, is_gif, photo_url, gif_url)
+                            VALUES (?, ?, ?, ?, ?, ?, ?)
+                        ''', (chat_id_str, keyword, text_response, is_photo, is_gif, photo_url, gif_url))
+                    
+                    if is_photo:
+                        send_message(chat_id, texts['filter_set_photo'].format(word=keyword), 
+                                   reply_to_message_id=msg_id)
+                    elif is_gif:
+                        send_message(chat_id, texts['filter_set_gif'].format(word=keyword), 
+                                   reply_to_message_id=msg_id)
+                    else:
+                        send_message(chat_id, texts['filter_set_text'].format(word=keyword), 
+                                   reply_to_message_id=msg_id)
+            
+            # KOMANDA /stop (si Rose) - FSHI FILTER
+            elif cmd == '/stop':
+                if chat_type not in ['group', 'supergroup']:
+                    send_message(chat_id, texts['group_only'], reply_to_message_id=msg_id)
+                elif not is_admin(chat_id, user_id):
+                    send_message(chat_id, texts['admin_only'], reply_to_message_id=msg_id)
+                elif not args:
+                    send_message(chat_id, "📝 Përdorimi: /stop <fjalë>", reply_to_message_id=msg_id)
+                else:
+                    keyword = args[0].lower()
+                    with db.get_connection() as conn:
+                        cursor = conn.cursor()
+                        cursor.execute('DELETE FROM filters WHERE chat_id = ? AND keyword = ?', 
+                                     (chat_id_str, keyword))
+                    send_message(chat_id, texts['filter_deleted'].format(word=keyword), 
+                               reply_to_message_id=msg_id)
+            
+            # KOMANDA /filters - LISTO FILTRAT
+            elif cmd == '/filters':
+                with db.get_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('SELECT keyword, response, is_photo, is_gif, photo_url, gif_url FROM filters WHERE chat_id = ? ORDER BY keyword', 
+                                 (chat_id_str,))
+                    filters_list = cursor.fetchall()
+                    
+                    if filters_list:
+                        filter_text = texts['filters_list']
+                        for f in filters_list:
+                            if f['is_gif']:
+                                filter_text += f"🎬 • `{f['keyword']}` → [GIF]"
+                                if f['response']:
+                                    filter_text += f" - {f['response']}"
+                                filter_text += "\n"
+                            elif f['is_photo']:
+                                filter_text += f"📸 • `{f['keyword']}` → [Foto]"
+                                if f['response']:
+                                    filter_text += f" - {f['response']}"
+                                filter_text += "\n"
+                            else:
+                                filter_text += f"📝 • `{f['keyword']}` → {f['response']}\n"
+                        send_message(chat_id, filter_text, reply_to_message_id=msg_id)
+                    else:
+                        send_message(chat_id, texts['no_filters'], reply_to_message_id=msg_id)
             
             # KOMANDA /setwelcome
             elif cmd == '/setwelcome':
@@ -473,106 +544,6 @@ def index():
                                    reply_to_message_id=msg_id)
                     else:
                         send_message(chat_id, texts['no_rules'], reply_to_message_id=msg_id)
-            
-            # KOMANDA /setfilter (ME MBËSHTETJE PËR FOTO DHE GIF)
-            elif cmd == '/setfilter':
-                if chat_type not in ['group', 'supergroup']:
-                    send_message(chat_id, texts['group_only'], reply_to_message_id=msg_id)
-                elif not is_admin(chat_id, user_id):
-                    send_message(chat_id, texts['admin_only'], reply_to_message_id=msg_id)
-                elif len(args) < 2:
-                    send_message(chat_id, texts['filter_usage'], reply_to_message_id=msg_id, parse_mode='Markdown')
-                else:
-                    keyword = args[0].lower()
-                    response = ' '.join(args[1:])
-                    
-                    # Kontrollo llojin e filtrit
-                    is_photo = response.startswith('photo:')
-                    is_gif = response.startswith('gif:')
-                    photo_url = None
-                    gif_url = None
-                    text_response = response
-                    
-                    if is_photo:
-                        photo_url = response[6:]  # Heq 'photo:'
-                        text_response = None
-                        
-                        # Validim i thjeshtë i URL-së
-                        if not photo_url.startswith(('http://', 'https://')):
-                            send_message(chat_id, "❌ URL e fotos duhet të fillojë me http:// ose https://", 
-                                       reply_to_message_id=msg_id)
-                            return jsonify({'ok': True})
-                    
-                    elif is_gif:
-                        gif_url = response[4:]  # Heq 'gif:'
-                        text_response = None
-                        
-                        # Validim i thjeshtë i URL-së
-                        if not gif_url.startswith(('http://', 'https://')):
-                            send_message(chat_id, "❌ URL e GIF duhet të fillojë me http:// ose https://", 
-                                       reply_to_message_id=msg_id)
-                            return jsonify({'ok': True})
-                    
-                    with db.get_connection() as conn:
-                        cursor = conn.cursor()
-                        cursor.execute('''
-                            INSERT OR REPLACE INTO filters (chat_id, keyword, response, is_photo, is_gif, photo_url, gif_url)
-                            VALUES (?, ?, ?, ?, ?, ?, ?)
-                        ''', (chat_id_str, keyword, text_response, is_photo, is_gif, photo_url, gif_url))
-                    
-                    if is_photo:
-                        send_message(chat_id, texts['filter_set_photo'].format(word=keyword), 
-                                   reply_to_message_id=msg_id)
-                    elif is_gif:
-                        send_message(chat_id, texts['filter_set_gif'].format(word=keyword), 
-                                   reply_to_message_id=msg_id)
-                    else:
-                        send_message(chat_id, texts['filter_set_text'].format(word=keyword), 
-                                   reply_to_message_id=msg_id)
-            
-            # KOMANDA /delfilter
-            elif cmd == '/delfilter':
-                if chat_type not in ['group', 'supergroup']:
-                    send_message(chat_id, texts['group_only'], reply_to_message_id=msg_id)
-                elif not is_admin(chat_id, user_id):
-                    send_message(chat_id, texts['admin_only'], reply_to_message_id=msg_id)
-                elif not args:
-                    send_message(chat_id, "📝 Përdorimi: /delfilter <fjalë>", reply_to_message_id=msg_id)
-                else:
-                    keyword = args[0].lower()
-                    with db.get_connection() as conn:
-                        cursor = conn.cursor()
-                        cursor.execute('DELETE FROM filters WHERE chat_id = ? AND keyword = ?', 
-                                     (chat_id_str, keyword))
-                    send_message(chat_id, texts['filter_deleted'].format(word=keyword), 
-                               reply_to_message_id=msg_id)
-            
-            # KOMANDA /filters
-            elif cmd == '/filters':
-                with db.get_connection() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('SELECT keyword, response, is_photo, is_gif, photo_url, gif_url FROM filters WHERE chat_id = ? ORDER BY keyword', 
-                                 (chat_id_str,))
-                    filters_list = cursor.fetchall()
-                    
-                    if filters_list:
-                        filter_text = texts['filters_list']
-                        for f in filters_list:
-                            if f['is_gif']:
-                                filter_text += f"🎬 • `{f['keyword']}` → [GIF]"
-                                if f['response']:
-                                    filter_text += f" - {f['response']}"
-                                filter_text += "\n"
-                            elif f['is_photo']:
-                                filter_text += f"📸 • `{f['keyword']}` → [Foto]"
-                                if f['response']:
-                                    filter_text += f" - {f['response']}"
-                                filter_text += "\n"
-                            else:
-                                filter_text += f"📝 • `{f['keyword']}` → {f['response']}\n"
-                        send_message(chat_id, filter_text, reply_to_message_id=msg_id)
-                    else:
-                        send_message(chat_id, texts['no_filters'], reply_to_message_id=msg_id)
             
             # KOMANDA /ban
             elif cmd == '/ban':
@@ -661,20 +632,6 @@ def index():
                                 cursor.execute('DELETE FROM warnings WHERE chat_id = ? AND user_id = ?', 
                                              (chat_id_str, target))
             
-            # KOMANDA /warns
-            elif cmd == '/warns':
-                if not msg.get('reply_to_message'):
-                    send_message(chat_id, texts['need_reply'], reply_to_message_id=msg_id)
-                else:
-                    target = msg['reply_to_message']['from']['id']
-                    with db.get_connection() as conn:
-                        cursor = conn.cursor()
-                        cursor.execute('SELECT count FROM warnings WHERE chat_id = ? AND user_id = ?', 
-                                     (chat_id_str, target))
-                        result = cursor.fetchone()
-                        count = result['count'] if result else 0
-                    send_message(chat_id, f"⚠️ Paralajmërime: {count}/3", reply_to_message_id=msg_id)
-            
             # KOMANDA /language
             elif cmd == '/language':
                 if chat_type not in ['group', 'supergroup']:
@@ -717,12 +674,12 @@ def index():
                         f"🔍 Filtrat total: {total_filters}\n"
                         f"📸 Filtrat me foto: {photo_filters}\n"
                         f"🎬 Filtrat me GIF: {gif_filters}\n"
-                        f"⚠️ Paralajmërime aktive: {warns_c}\n"
+                        f"⚠️ Paralajmërime: {warns_c}\n"
                         f"🔇 Të heshtur: {muted_c}"
                     )
                     send_message(chat_id, stats_text, reply_to_message_id=msg_id)
         
-        # ========== FILTRAT DHE MUTE ==========
+        # ========== FILTRAT SI ROSE - VETËM REPLY, PA FSHIRJE ==========
         elif text:
             with db.get_connection() as conn:
                 cursor = conn.cursor()
@@ -733,11 +690,10 @@ def index():
                     WHERE chat_id = ? AND user_id = ? AND until > datetime("now")
                 ''', (chat_id_str, user_id))
                 if cursor.fetchone():
-                    delete_message(chat_id, msg_id)
                     send_message(chat_id, texts['muted_warning'], reply_to_message_id=msg_id)
                     return jsonify({'ok': True})
                 
-                # Kontrollo filtrat (përfshirë foto dhe GIF)
+                # Kontrollo filtrat (si Rose - VETËM REPLY, PA FSHIRJE)
                 cursor.execute('''
                     SELECT keyword, response, is_photo, is_gif, photo_url, gif_url 
                     FROM filters 
@@ -749,26 +705,20 @@ def index():
                 text_lower = text.lower()
                 for filter_item in filters_list:
                     if filter_item['keyword'] in text_lower:
-                        # Fshi mesazhin origjinal
-                        delete_message(chat_id, msg_id)
-                        
-                        # Dërgo përgjigjen sipas llojit (me reply)
+                        # Dërgo përgjigjen si reply - PA FSHIRJE TË MESAZHIT ORIGJINAL
                         if filter_item['is_gif'] and filter_item['gif_url']:
-                            # Dërgo GIF me reply
                             caption = filter_item['response'] if filter_item['response'] else None
                             send_gif(chat_id, filter_item['gif_url'], 
                                     caption=caption, 
                                     reply_to_message_id=msg_id)
                         elif filter_item['is_photo'] and filter_item['photo_url']:
-                            # Dërgo foto me reply
                             caption = filter_item['response'] if filter_item['response'] else None
                             send_photo(chat_id, filter_item['photo_url'], 
                                       caption=caption, 
                                       reply_to_message_id=msg_id)
                         else:
-                            # Dërgo tekst me reply
                             if filter_item['response']:
-                                send_message(chat_id, f"⚠️ {filter_item['response']}", 
+                                send_message(chat_id, filter_item['response'], 
                                            reply_to_message_id=msg_id)
                         break
         
@@ -782,12 +732,11 @@ def index():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
     
-    # Krijo direktori për databazë nëse nuk ekziston
     if not os.path.exists('data'):
         os.makedirs('data')
     
     logger.info(f"Starting bot on port {port}")
     logger.info(f"Token configured: {bool(TOKEN)}")
-    logger.info("Bot supports text, photo and GIF filters with reply!")
+    logger.info("Bot running like Rose - filters reply without deleting messages!")
     
     app.run(host='0.0.0.0', port=port, debug=False)
