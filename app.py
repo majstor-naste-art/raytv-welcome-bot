@@ -52,7 +52,7 @@ def send_message(chat_id, text, reply_to_message_id=None):
     try:
         requests.post(url, json=payload, timeout=10)
     except Exception as e:
-        logger.error(f"Error: {e}")
+        logger.error(f"Error sending: {e}")
 
 def delete_message(chat_id, message_id):
     if not TOKEN:
@@ -61,7 +61,7 @@ def delete_message(chat_id, message_id):
     try:
         requests.post(url, json={'chat_id': chat_id, 'message_id': message_id}, timeout=10)
     except Exception as e:
-        logger.error(f"Error: {e}")
+        logger.error(f"Error deleting: {e}")
 
 def ban_user(chat_id, user_id):
     if not TOKEN:
@@ -71,7 +71,7 @@ def ban_user(chat_id, user_id):
         r = requests.post(url, json={'chat_id': chat_id, 'user_id': user_id}, timeout=10)
         return r.json().get('ok', False)
     except Exception as e:
-        logger.error(f"Error: {e}")
+        logger.error(f"Error banning: {e}")
         return False
 
 def is_admin(chat_id, user_id):
@@ -84,16 +84,19 @@ def is_admin(chat_id, user_id):
             admins = [a['user']['id'] for a in r.json()['result']]
             return user_id in admins
     except Exception as e:
-        logger.error(f"Error: {e}")
+        logger.error(f"Error checking admin: {e}")
     return False
 
 @app.route('/', methods=['POST', 'GET'])
 def index():
     if request.method == 'GET':
-        return jsonify({'status': 'running', 'token_configured': bool(TOKEN)})
+        return jsonify({
+            'status': 'running',
+            'token_configured': bool(TOKEN),
+            'message': 'Bot is active'
+        })
     
     try:
-        # Merr të dhënat
         if request.is_json:
             update = request.get_json()
         else:
@@ -268,5 +271,5 @@ def index():
         return jsonify({'ok': False}), 500
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8080))
+    port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
