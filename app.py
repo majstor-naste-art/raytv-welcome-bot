@@ -149,16 +149,13 @@ class Database:
                 )
             ''')
             
-            # Notes table (like Rose notes)
+            # Notes table
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS notes (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     chat_id TEXT,
                     name TEXT,
                     content TEXT,
-                    is_photo BOOLEAN DEFAULT 0,
-                    is_gif BOOLEAN DEFAULT 0,
-                    media_url TEXT,
                     created_by INTEGER,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(chat_id, name)
@@ -192,7 +189,6 @@ db = Database()
 # ==================== FUNKSIONET TELEGRAM ====================
 def send_message(chat_id: int, text: str, reply_to_message_id: Optional[int] = None, 
                  parse_mode: str = 'HTML', disable_web_page_preview: bool = False) -> Optional[Dict]:
-    """Send text message"""
     if not TOKEN:
         return None
     
@@ -219,7 +215,6 @@ def send_message(chat_id: int, text: str, reply_to_message_id: Optional[int] = N
 
 def send_photo(chat_id: int, photo_url: str, caption: str = None, 
                reply_to_message_id: Optional[int] = None) -> Optional[Dict]:
-    """Send photo"""
     if not TOKEN:
         return None
     
@@ -246,7 +241,6 @@ def send_photo(chat_id: int, photo_url: str, caption: str = None,
 
 def send_gif(chat_id: int, gif_url: str, caption: str = None, 
              reply_to_message_id: Optional[int] = None) -> Optional[Dict]:
-    """Send GIF/animation"""
     if not TOKEN:
         return None
     
@@ -272,7 +266,6 @@ def send_gif(chat_id: int, gif_url: str, caption: str = None,
         return None
 
 def send_sticker(chat_id: int, sticker_id: str, reply_to_message_id: Optional[int] = None) -> Optional[Dict]:
-    """Send sticker"""
     if not TOKEN:
         return None
     
@@ -297,7 +290,6 @@ def send_sticker(chat_id: int, sticker_id: str, reply_to_message_id: Optional[in
 
 def send_video(chat_id: int, video_url: str, caption: str = None, 
                reply_to_message_id: Optional[int] = None) -> Optional[Dict]:
-    """Send video"""
     if not TOKEN:
         return None
     
@@ -323,7 +315,6 @@ def send_video(chat_id: int, video_url: str, caption: str = None,
         return None
 
 def delete_message(chat_id: int, message_id: int) -> bool:
-    """Delete message"""
     if not TOKEN:
         return False
     
@@ -336,7 +327,6 @@ def delete_message(chat_id: int, message_id: int) -> bool:
         return False
 
 def pin_message(chat_id: int, message_id: int, disable_notification: bool = True) -> bool:
-    """Pin message"""
     if not TOKEN:
         return False
     
@@ -353,7 +343,6 @@ def pin_message(chat_id: int, message_id: int, disable_notification: bool = True
         return False
 
 def unpin_message(chat_id: int, message_id: Optional[int] = None) -> bool:
-    """Unpin message"""
     if not TOKEN:
         return False
     
@@ -370,7 +359,6 @@ def unpin_message(chat_id: int, message_id: Optional[int] = None) -> bool:
         return False
 
 def ban_user(chat_id: int, user_id: int, revoke_messages: bool = True, reason: str = None) -> bool:
-    """Ban user"""
     if not TOKEN:
         return False
     
@@ -398,7 +386,6 @@ def ban_user(chat_id: int, user_id: int, revoke_messages: bool = True, reason: s
         return False
 
 def unban_user(chat_id: int, user_id: int) -> bool:
-    """Unban user"""
     if not TOKEN:
         return False
     
@@ -421,13 +408,11 @@ def unban_user(chat_id: int, user_id: int) -> bool:
         return False
 
 def kick_user(chat_id: int, user_id: int, reason: str = None) -> bool:
-    """Kick user"""
     if ban_user(chat_id, user_id, False, reason):
         return unban_user(chat_id, user_id)
     return False
 
 def mute_user(chat_id: int, user_id: int, minutes: int = 5, reason: str = None) -> bool:
-    """Mute user"""
     until = datetime.now() + timedelta(minutes=minutes)
     with db.get_connection() as conn:
         cursor = conn.cursor()
@@ -438,7 +423,6 @@ def mute_user(chat_id: int, user_id: int, minutes: int = 5, reason: str = None) 
     return True
 
 def unmute_user(chat_id: int, user_id: int) -> bool:
-    """Unmute user"""
     with db.get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('DELETE FROM muted_users WHERE chat_id = ? AND user_id = ?', 
@@ -446,11 +430,9 @@ def unmute_user(chat_id: int, user_id: int) -> bool:
     return True
 
 def is_admin(chat_id: int, user_id: int, use_cache: bool = True) -> bool:
-    """Check if user is admin with cache"""
     if not TOKEN:
         return False
     
-    # Check cache first
     if use_cache:
         with db.get_connection() as conn:
             cursor = conn.cursor()
@@ -462,7 +444,6 @@ def is_admin(chat_id: int, user_id: int, use_cache: bool = True) -> bool:
             if cursor.fetchone():
                 return True
     
-    # Fetch from API
     url = f"https://api.telegram.org/bot{TOKEN}/getChatAdministrators"
     try:
         response = requests.post(url, json={'chat_id': chat_id}, timeout=10)
@@ -470,7 +451,6 @@ def is_admin(chat_id: int, user_id: int, use_cache: bool = True) -> bool:
             admins = [a['user']['id'] for a in response.json()['result']]
             is_admin_user = user_id in admins
             
-            # Update cache
             if is_admin_user:
                 with db.get_connection() as conn:
                     cursor = conn.cursor()
@@ -485,7 +465,6 @@ def is_admin(chat_id: int, user_id: int, use_cache: bool = True) -> bool:
     return False
 
 def get_chat_language(chat_id: int) -> str:
-    """Get group language"""
     with db.get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('SELECT language FROM groups WHERE chat_id = ?', (str(chat_id),))
@@ -493,7 +472,6 @@ def get_chat_language(chat_id: int) -> str:
         return result['language'] if result else 'en'
 
 def set_chat_language(chat_id: int, language: str) -> bool:
-    """Set group language"""
     with db.get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('''
@@ -503,28 +481,11 @@ def set_chat_language(chat_id: int, language: str) -> bool:
         return True
 
 def is_command_disabled(chat_id: int, command: str) -> bool:
-    """Check if command is disabled in group"""
     with db.get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('SELECT 1 FROM disabled_commands WHERE chat_id = ? AND command = ?', 
                      (str(chat_id), command))
         return cursor.fetchone() is not None
-
-def disable_command(chat_id: int, command: str) -> bool:
-    """Disable command in group"""
-    with db.get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute('INSERT OR IGNORE INTO disabled_commands (chat_id, command) VALUES (?, ?)', 
-                     (str(chat_id), command))
-        return True
-
-def enable_command(chat_id: int, command: str) -> bool:
-    """Enable command in group"""
-    with db.get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute('DELETE FROM disabled_commands WHERE chat_id = ? AND command = ?', 
-                     (str(chat_id), command))
-        return True
 
 # ==================== LANGUAGES ====================
 LANGUAGES = {
@@ -544,50 +505,32 @@ LANGUAGES = {
         'filter_set_text': "✅ Filter for '{word}' has been set!",
         'filter_set_photo': "✅ Photo filter for '{word}' has been set!",
         'filter_set_gif': "✅ GIF filter for '{word}' has been set!",
-        'filter_set_sticker': "✅ Sticker filter for '{word}' has been set!",
-        'filter_set_video': "✅ Video filter for '{word}' has been set!",
         'filter_deleted': "✅ Filter for '{word}' has been deleted!",
         'no_filters': "ℹ️ No filters have been set.",
         'filters_list': "🔍 **Active filters:**\n\n",
         'muted_warning': "🔇 You are muted! You cannot send messages.",
         'error_general': "❌ An error occurred. Please try again.",
         'stats': "📊 **Group Statistics**\n\n",
-        'no_filter_word': "⚠️ Please provide a keyword and response!\nUsage: /filter <keyword> <response>",
-        'welcome_usage': "📝 **Welcome Settings:**\n\n/setwelcome <message> - Set welcome message\n/setwelcome enable/disable - Enable/disable welcome\n/setwelcome pin on/off - Pin welcome message\n/setwelcome delete <minutes> - Auto-delete after minutes\n/setwelcome preview - Preview welcome message\n/setwelcome reset - Reset to default\n\n**Variables:**\n{user} - Full name\n{first_name} - First name\n{username} - Username\n{id} - User ID\n{group} - Group name\n{members} - Member count",
         'welcome_set': "✅ Welcome message has been set!",
         'welcome_enabled': "✅ Welcome message has been enabled!",
         'welcome_disabled': "⏸️ Welcome message has been disabled!",
         'welcome_pin_enabled': "📍 Welcome message will be pinned!",
         'welcome_pin_disabled': "📍 Welcome pin has been disabled!",
-        'welcome_auto_delete': "⏰ Welcome message will be deleted after {minutes} minutes!",
-        'welcome_preview': "👀 **Preview:**\n\n",
         'welcome_reset': "🔄 Welcome message has been reset to default!",
-        'rules_usage': "📝 Usage: /setrules <rules>",
         'rules_set': "✅ Rules have been set!",
-        'rules_updated': "✅ Rules have been updated!",
-        'note_usage': "📝 Usage:\n/note <name> <content> - Save a note\n/get <name> - Get a note\n/notes - List all notes\n/delnote <name> - Delete a note",
         'note_saved': "✅ Note '{name}' has been saved!",
         'note_deleted': "✅ Note '{name}' has been deleted!",
         'no_notes': "ℹ️ No notes have been saved.",
         'notes_list': "📝 **Saved notes:**\n\n",
-        'warn_usage': "⚠️ Usage: /warn <reason> (reply to message)",
         'warn_count': "⚠️ Warning {count}/3",
         'warn_banned': "🚫 User has been banned for reaching 3 warnings!",
-        'warns_usage': "⚠️ Usage: /warns (reply to message)",
         'warns_count': "⚠️ Warnings: {count}/3",
         'resetwarns': "✅ Warnings have been reset!",
-        'mute_usage': "🔇 Usage: /mute <minutes> (reply to message)",
-        'unmute_usage': "🔊 Usage: /unmute (reply to message)",
-        'ban_usage': "🚫 Usage: /ban <reason> (reply to message)",
-        'kick_usage': "👢 Usage: /kick <reason> (reply to message)",
-        'pin_usage': "📍 Usage: /pin (reply to message)",
-        'unpin_usage': "📍 Usage: /unpin",
         'pinned': "📍 Message has been pinned!",
         'unpinned': "📍 Message has been unpinned!",
-        'language_usage': "🌐 Usage: /language <en/sq/mk>",
         'language_changed': "✅ Language has been changed to {lang}!",
         'admin_list': "👑 **Administrators:**\n\n",
-        'bot_info': "🤖 **Bot Info:**\n\nVersion: 2.3.0\nLanguage: Python 3.12\nDatabase: SQLite\nFeatures: Filters, Welcome, Rules, Notes, Moderation",
+        'bot_info': "🤖 **Rose Bot v2.3**\n\nFeatures: Filters, Welcome, Rules, Notes, Moderation",
         'help_text': (
             "🤖 **Rose Bot v2.3**\n\n"
             "📋 **Commands:**\n\n"
@@ -639,54 +582,36 @@ LANGUAGES = {
         'admin_only': "👑 Vetëm administratorët mund ta përdorin këtë komandë!",
         'group_only': "⚠️ Ky funksion punon vetëm në grupe!",
         'need_reply': "⚠️ Ju lutemi përgjigjuni mesazhit të përdoruesit!",
-        'filter_usage': "📝 **Përdorimi:**\n\n**Filtër tekst:**\n/filter <fjalë> <përgjigje>\n\n**Filtër foto:**\n/filter <fjalë> photo:<URL>\n\n**Filtër GIF:**\n/filter <fjalë> gif:<URL>\n\n**Filtër sticker:**\n/filter <fjalë> sticker:<sticker_id>\n\n**Filtër video:**\n/filter <fjalë> video:<URL>\n\n**Shembuj:**\n/filter përshëndetje Përshëndetje!\n/filter mirmengjes photo:https://example.com/morning.jpg",
+        'filter_usage': "📝 **Përdorimi:**\n\n**Filtër tekst:**\n/filter <fjalë> <përgjigje>\n\n**Filtër foto:**\n/filter <fjalë> photo:<URL>\n\n**Filtër GIF:**\n/filter <fjalë> gif:<URL>\n\n**Shembuj:**\n/filter përshëndetje Përshëndetje!\n/filter mirmengjes photo:https://example.com/morning.jpg",
         'filter_set_text': "✅ Filtri për '{word}' u vendos!",
         'filter_set_photo': "✅ Filtri me foto për '{word}' u vendos!",
         'filter_set_gif': "✅ Filtri me GIF për '{word}' u vendos!",
-        'filter_set_sticker': "✅ Filtri me sticker për '{word}' u vendos!",
-        'filter_set_video': "✅ Filtri me video për '{word}' u vendos!",
         'filter_deleted': "✅ Filtri për '{word}' u fshi!",
         'no_filters': "ℹ️ Nuk ka filtra të vendosur.",
         'filters_list': "🔍 **Filtrat e aktivizuar:**\n\n",
         'muted_warning': "🔇 Ju jeni të heshtur! Nuk mund të dërgoni mesazhe.",
         'error_general': "❌ Ndodhi një gabim. Ju lutem provoni përsëri.",
         'stats': "📊 **Statistikat e Grupit**\n\n",
-        'no_filter_word': "⚠️ Ju lutem vendosni një fjalë kyçe dhe përgjigje!\nPërdorimi: /filter <fjalë> <përgjigje>",
-        'welcome_usage': "📝 **Konfigurimi i Mirëseardhjes:**\n\n/setwelcome <mesazh> - Vendos mirëseardhjen\n/setwelcome enable/disable - Aktivizon/Çaktivizon\n/setwelcome pin on/off - Bën pin të mirëseardhjes\n/setwelcome delete <minuta> - Fshi automatikisht\n/setwelcome preview - Preview i mirëseardhjes\n/setwelcome reset - Rivendos në default\n\n**Variablat:**\n{user} - Emri i plotë\n{first_name} - Emri\n{username} - Username\n{id} - ID e përdoruesit\n{group} - Emri i grupit\n{members} - Numri i anëtarëve",
         'welcome_set': "✅ Mirëseardhja u vendos!",
         'welcome_enabled': "✅ Mirëseardhja u aktivizua!",
         'welcome_disabled': "⏸️ Mirëseardhja u çaktivizua!",
         'welcome_pin_enabled': "📍 Mirëseardhja do të bëhet pin!",
         'welcome_pin_disabled': "📍 Pin-i i mirëseardhjes u çaktivizua!",
-        'welcome_auto_delete': "⏰ Mirëseardhja do të fshihet pas {minutes} minutash!",
-        'welcome_preview': "👀 **Preview:**\n\n",
         'welcome_reset': "🔄 Mirëseardhja u rivendos në default!",
-        'rules_usage': "📝 Përdorimi: /setrules <rregullat>",
         'rules_set': "✅ Rregullat u vendosën!",
-        'rules_updated': "✅ Rregullat u përditësuan!",
-        'note_usage': "📝 Përdorimi:\n/note <emri> <përmbajtja> - Ruaj një shënim\n/get <emri> - Merre një shënim\n/notes - Listo të gjithë shënimet\n/delnote <emri> - Fshi një shënim",
         'note_saved': "✅ Shënimi '{name}' u ruajt!",
         'note_deleted': "✅ Shënimi '{name}' u fshi!",
         'no_notes': "ℹ️ Nuk ka shënime të ruajtura.",
         'notes_list': "📝 **Shënimet e ruajtura:**\n\n",
-        'warn_usage': "⚠️ Përdorimi: /warn <arsyeja> (përgjigju mesazhit)",
         'warn_count': "⚠️ Paralajmërim {count}/3",
         'warn_banned': "🚫 Përdoruesi u ndalua për 3 paralajmërime!",
-        'warns_usage': "⚠️ Përdorimi: /warns (përgjigju mesazhit)",
         'warns_count': "⚠️ Paralajmërime: {count}/3",
         'resetwarns': "✅ Paralajmërimet u rivendosën!",
-        'mute_usage': "🔇 Përdorimi: /mute <minuta> (përgjigju mesazhit)",
-        'unmute_usage': "🔊 Përdorimi: /unmute (përgjigju mesazhit)",
-        'ban_usage': "🚫 Përdorimi: /ban <arsyeja> (përgjigju mesazhit)",
-        'kick_usage': "👢 Përdorimi: /kick <arsyeja> (përgjigju mesazhit)",
-        'pin_usage': "📍 Përdorimi: /pin (përgjigju mesazhit)",
-        'unpin_usage': "📍 Përdorimi: /unpin",
         'pinned': "📍 Mesazhi u bë pin!",
         'unpinned': "📍 Pin-i u hoq!",
-        'language_usage': "🌐 Përdorimi: /language <en/sq/mk>",
         'language_changed': "✅ Gjuha u ndryshua në {lang}!",
         'admin_list': "👑 **Administratorët:**\n\n",
-        'bot_info': "🤖 **Informacioni i Bot-it:**\n\nVersioni: 2.3.0\nGjuha: Python 3.12\nDatabaza: SQLite\nFunksionet: Filtrat, Mirëseardhja, Rregullat, Shënimet, Menaxhimi",
+        'bot_info': "🤖 **Rose Bot v2.3**\n\nFunksionet: Filtrat, Mirëseardhja, Rregullat, Shënimet, Menaxhimi",
         'help_text': (
             "🤖 **Rose Bot v2.3**\n\n"
             "📋 **Komandat:**\n\n"
@@ -738,54 +663,36 @@ LANGUAGES = {
         'admin_only': "👑 Само администраторите можат да ја користат оваа команда!",
         'group_only': "⚠️ Оваа функција работи само во групи!",
         'need_reply': "⚠️ Ве молиме одговорете на пораката на корисникот!",
-        'filter_usage': "📝 **Употреба:**\n\n**Текстуален филтер:**\n/filter <збор> <одговор>\n\n**Филтер со слика:**\n/filter <збор> photo:<URL>\n\n**Филтер со GIF:**\n/filter <збор> gif:<URL>\n\n**Филтер со стикер:**\n/filter <збор> sticker:<sticker_id>\n\n**Филтер со видео:**\n/filter <збор> video:<URL>\n\n**Примери:**\n/filter здраво Здраво!\n/filter доброутро photo:https://example.com/morning.jpg",
+        'filter_usage': "📝 **Употреба:**\n\n**Текстуален филтер:**\n/filter <збор> <одговор>\n\n**Филтер со слика:**\n/filter <збор> photo:<URL>\n\n**Филтер со GIF:**\n/filter <збор> gif:<URL>\n\n**Примери:**\n/filter здраво Здраво!\n/filter доброутро photo:https://example.com/morning.jpg",
         'filter_set_text': "✅ Филтерот за '{word}' е поставен!",
         'filter_set_photo': "✅ Филтерот со слика за '{word}' е поставен!",
         'filter_set_gif': "✅ Филтерот со GIF за '{word}' е поставен!",
-        'filter_set_sticker': "✅ Филтерот со стикер за '{word}' е поставен!",
-        'filter_set_video': "✅ Филтерот со видео за '{word}' е поставен!",
         'filter_deleted': "✅ Филтерот за '{word}' е избришан!",
         'no_filters': "ℹ️ Нема поставено филтри.",
         'filters_list': "🔍 **Активни филтри:**\n\n",
         'muted_warning': "🔇 Вие сте занемени! Не можете да испраќате пораки.",
         'error_general': "❌ Се случи грешка. Ве молиме обидете се повторно.",
         'stats': "📊 **Статистики на групата**\n\n",
-        'no_filter_word': "⚠️ Ве молиме внесете збор и одговор!\nУпотреба: /filter <збор> <одговор>",
-        'welcome_usage': "📝 **Подесување на добредојде:**\n\n/setwelcome <порака> - Постави добредојде\n/setwelcome enable/disable - Овозможи/Оневозможи\n/setwelcome pin on/off - Закачи порака\n/setwelcome delete <минути> - Автоматско бришење\n/setwelcome preview - Преглед\n/setwelcome reset - Врати на стандардно\n\n**Променливи:**\n{user} - Цело име\n{first_name} - Име\n{username} - Корисничко име\n{id} - ID на корисник\n{group} - Име на група\n{members} - Број на членови",
         'welcome_set': "✅ Добредојде пораката е поставена!",
         'welcome_enabled': "✅ Добредојде пораката е овозможена!",
         'welcome_disabled': "⏸️ Добредојде пораката е оневозможена!",
         'welcome_pin_enabled': "📍 Добредојде пораката ќе биде закачена!",
         'welcome_pin_disabled': "📍 Закачувањето на добредојде е оневозможено!",
-        'welcome_auto_delete': "⏰ Добредојде пораката ќе се избрише по {minutes} минути!",
-        'welcome_preview': "👀 **Преглед:**\n\n",
         'welcome_reset': "🔄 Добредојде пораката е вратена на стандардна!",
-        'rules_usage': "📝 Употреба: /setrules <правила>",
         'rules_set': "✅ Правилата се поставени!",
-        'rules_updated': "✅ Правилата се ажурирани!",
-        'note_usage': "📝 Употреба:\n/note <име> <содржина> - Зачувај белешка\n/get <име> - Земете белешка\n/notes - Листа на белешки\n/delnote <име> - Избриши белешка",
         'note_saved': "✅ Белешката '{name}' е зачувана!",
         'note_deleted': "✅ Белешката '{name}' е избришана!",
         'no_notes': "ℹ️ Нема зачувани белешки.",
         'notes_list': "📝 **Зачувани белешки:**\n\n",
-        'warn_usage': "⚠️ Употреба: /warn <причина> (одговорете на порака)",
         'warn_count': "⚠️ Предупредување {count}/3",
         'warn_banned': "🚫 Корисникот е блокиран поради 3 предупредувања!",
-        'warns_usage': "⚠️ Употреба: /warns (одговорете на порака)",
         'warns_count': "⚠️ Предупредувања: {count}/3",
         'resetwarns': "✅ Предупредувањата се ресетирани!",
-        'mute_usage': "🔇 Употреба: /mute <минути> (одговорете на порака)",
-        'unmute_usage': "🔊 Употреба: /unmute (одговорете на порака)",
-        'ban_usage': "🚫 Употреба: /ban <причина> (одговорете на порака)",
-        'kick_usage': "👢 Употреба: /kick <причина> (одговорете на порака)",
-        'pin_usage': "📍 Употреба: /pin (одговорете на порака)",
-        'unpin_usage': "📍 Употреба: /unpin",
         'pinned': "📍 Пораката е закачена!",
         'unpinned': "📍 Закачувањето е отстрането!",
-        'language_usage': "🌐 Употреба: /language <en/sq/mk>",
         'language_changed': "✅ Јазикот е сменет на {lang}!",
         'admin_list': "👑 **Администратори:**\n\n",
-        'bot_info': "🤖 **Информации за бот:**\n\nВерзија: 2.3.0\nЈазик: Python 3.12\nБаза: SQLite\nФункции: Филтри, Добредојде, Правила, Белешки, Модерација",
+        'bot_info': "🤖 **Rose Bot v2.3**\n\nФункции: Филтри, Добредојде, Правила, Белешки, Модерација",
         'help_text': (
             "🤖 **Rose Bot v2.3**\n\n"
             "📋 **Команди:**\n\n"
@@ -836,11 +743,7 @@ def index():
             'token_configured': bool(TOKEN),
             'version': '2.3.0',
             'name': 'Rose Bot',
-            'features': [
-                'filters', 'welcome', 'rules', 'notes', 
-                'moderation', 'multi_language', 'pin', 
-                'admins', 'stats'
-            ]
+            'features': ['filters', 'welcome', 'rules', 'notes', 'moderation', 'multi_language']
         })
     
     if not TOKEN:
@@ -881,7 +784,7 @@ def index():
                 
                 name = member.get('first_name', 'User')
                 username = member.get('username', '')
-                user_id = member.get('id')
+                user_id_val = member.get('id')
                 
                 # Get welcome settings
                 with db.get_connection() as conn:
@@ -902,31 +805,12 @@ def index():
                 welcome = welcome.replace('{user}', name)
                 welcome = welcome.replace('{first_name}', name)
                 welcome = welcome.replace('{username}', f"@{username}" if username else name)
-                welcome = welcome.replace('{id}', str(user_id))
+                welcome = welcome.replace('{id}', str(user_id_val))
                 welcome = welcome.replace('{group}', msg['chat'].get('title', 'Group'))
-                
-                # Get member count
-                try:
-                    url = f"https://api.telegram.org/bot{TOKEN}/getChatMembersCount"
-                    response = requests.post(url, json={'chat_id': chat_id}, timeout=10)
-                    if response.ok:
-                        members_count = response.json().get('result', 0)
-                        welcome = welcome.replace('{members}', str(members_count))
-                except:
-                    welcome = welcome.replace('{members}', '?')
+                welcome = welcome.replace('{members}', '?')
                 
                 # Send welcome message
-                sent = send_message(chat_id, welcome, reply_to_message_id=msg_id)
-                
-                # Pin if enabled
-                if settings and settings.get('pin_enabled') and sent and sent.get('result', {}).get('message_id'):
-                    pin_message(chat_id, sent['result']['message_id'])
-                
-                # Auto delete after minutes
-                if settings and settings.get('delete_after_minutes', 0) > 0:
-                    delete_after_seconds = settings['delete_after_minutes'] * 60
-                    threading.Timer(delete_after_seconds, delete_message, 
-                                  args=[chat_id, sent['result']['message_id']]).start()
+                send_message(chat_id, welcome, reply_to_message_id=msg_id)
                 
                 # Send rules
                 with db.get_connection() as conn:
@@ -938,20 +822,11 @@ def index():
             
             return jsonify({'ok': True})
         
-        # ========== LEFT MEMBER ==========
-        if 'left_chat_member' in msg:
-            # Optional: Log or send goodbye message
-            pass
-        
         # ========== COMMANDS ==========
         if text and text.startswith('/'):
             parts = text.split()
             cmd = parts[0].lower().replace('@', '').split('/')[-1]
             args = parts[1:] if len(parts) > 1 else []
-            
-            # Check if command is disabled
-            if is_command_disabled(chat_id, cmd) and not is_admin(chat_id, user_id):
-                continue
             
             # ========== HELP ==========
             if cmd == 'help' or cmd == 'start':
@@ -976,9 +851,6 @@ def index():
                     # Check filter type
                     is_photo = response.startswith('photo:')
                     is_gif = response.startswith('gif:')
-                    is_sticker = response.startswith('sticker:')
-                    is_video = response.startswith('video:')
-                    
                     media_url = None
                     text_response = response
                     
@@ -990,14 +862,6 @@ def index():
                         media_url = response[4:]
                         text_response = None
                         filter_type = 'gif'
-                    elif is_sticker:
-                        media_url = response[8:]
-                        text_response = None
-                        filter_type = 'sticker'
-                    elif is_video:
-                        media_url = response[6:]
-                        text_response = None
-                        filter_type = 'video'
                     else:
                         filter_type = 'text'
                     
@@ -1005,22 +869,16 @@ def index():
                         cursor = conn.cursor()
                         cursor.execute('''
                             INSERT OR REPLACE INTO filters 
-                            (chat_id, keyword, response, is_photo, is_gif, is_sticker, is_video, media_url)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                            (chat_id, keyword, response, is_photo, is_gif, media_url)
+                            VALUES (?, ?, ?, ?, ?, ?)
                         ''', (chat_id_str, keyword, text_response, 
-                              is_photo, is_gif, is_sticker, is_video, media_url))
+                              is_photo, is_gif, media_url))
                     
                     if filter_type == 'photo':
                         send_message(chat_id, texts['filter_set_photo'].format(word=keyword), 
                                    reply_to_message_id=msg_id)
                     elif filter_type == 'gif':
                         send_message(chat_id, texts['filter_set_gif'].format(word=keyword), 
-                                   reply_to_message_id=msg_id)
-                    elif filter_type == 'sticker':
-                        send_message(chat_id, texts['filter_set_sticker'].format(word=keyword), 
-                                   reply_to_message_id=msg_id)
-                    elif filter_type == 'video':
-                        send_message(chat_id, texts['filter_set_video'].format(word=keyword), 
                                    reply_to_message_id=msg_id)
                     else:
                         send_message(chat_id, texts['filter_set_text'].format(word=keyword), 
@@ -1046,7 +904,7 @@ def index():
                 with db.get_connection() as conn:
                     cursor = conn.cursor()
                     cursor.execute('''
-                        SELECT keyword, response, is_photo, is_gif, is_sticker, is_video, media_url 
+                        SELECT keyword, response, is_photo, is_gif, media_url 
                         FROM filters WHERE chat_id = ? ORDER BY keyword
                     ''', (chat_id_str,))
                     filters_list = cursor.fetchall()
@@ -1058,10 +916,6 @@ def index():
                                 filter_text += f"🎬 • `{f['keyword']}`\n"
                             elif f['is_photo']:
                                 filter_text += f"📸 • `{f['keyword']}`\n"
-                            elif f['is_sticker']:
-                                filter_text += f"🔖 • `{f['keyword']}`\n"
-                            elif f['is_video']:
-                                filter_text += f"🎥 • `{f['keyword']}`\n"
                             else:
                                 filter_text += f"📝 • `{f['keyword']}` → {f['response'][:50]}\n"
                         send_message(chat_id, filter_text, reply_to_message_id=msg_id)
@@ -1075,7 +929,7 @@ def index():
                 elif not is_admin(chat_id, user_id):
                     send_message(chat_id, texts['admin_only'], reply_to_message_id=msg_id)
                 elif not args:
-                    send_message(chat_id, texts['welcome_usage'], reply_to_message_id=msg_id, parse_mode='Markdown')
+                    send_message(chat_id, "📝 Usage: /setwelcome <message>", reply_to_message_id=msg_id)
                 else:
                     if args[0].lower() == 'enable':
                         with db.get_connection() as conn:
@@ -1083,7 +937,6 @@ def index():
                             cursor.execute('''
                                 INSERT OR REPLACE INTO welcome_settings (chat_id, is_enabled)
                                 VALUES (?, 1)
-                                ON CONFLICT(chat_id) DO UPDATE SET is_enabled = 1
                             ''', (chat_id_str,))
                         send_message(chat_id, texts['welcome_enabled'], reply_to_message_id=msg_id)
                     
@@ -1093,7 +946,6 @@ def index():
                             cursor.execute('''
                                 INSERT OR REPLACE INTO welcome_settings (chat_id, is_enabled)
                                 VALUES (?, 0)
-                                ON CONFLICT(chat_id) DO UPDATE SET is_enabled = 0
                             ''', (chat_id_str,))
                         send_message(chat_id, texts['welcome_disabled'], reply_to_message_id=msg_id)
                     
@@ -1104,7 +956,6 @@ def index():
                                 cursor.execute('''
                                     INSERT OR REPLACE INTO welcome_settings (chat_id, pin_enabled)
                                     VALUES (?, 1)
-                                    ON CONFLICT(chat_id) DO UPDATE SET pin_enabled = 1
                                 ''', (chat_id_str,))
                             send_message(chat_id, texts['welcome_pin_enabled'], reply_to_message_id=msg_id)
                         elif args[1].lower() == 'off':
@@ -1113,49 +964,8 @@ def index():
                                 cursor.execute('''
                                     INSERT OR REPLACE INTO welcome_settings (chat_id, pin_enabled)
                                     VALUES (?, 0)
-                                    ON CONFLICT(chat_id) DO UPDATE SET pin_enabled = 0
                                 ''', (chat_id_str,))
                             send_message(chat_id, texts['welcome_pin_disabled'], reply_to_message_id=msg_id)
-                    
-                    elif args[0].lower() == 'delete' and len(args) > 1:
-                        try:
-                            minutes = int(args[1])
-                            with db.get_connection() as conn:
-                                cursor = conn.cursor()
-                                cursor.execute('''
-                                    INSERT OR REPLACE INTO welcome_settings (chat_id, delete_after_minutes)
-                                    VALUES (?, ?)
-                                    ON CONFLICT(chat_id) DO UPDATE SET delete_after_minutes = ?
-                                ''', (chat_id_str, minutes, minutes))
-                            send_message(chat_id, texts['welcome_auto_delete'].format(minutes=minutes), 
-                                       reply_to_message_id=msg_id)
-                        except ValueError:
-                            send_message(chat_id, "❌ Please enter a valid number!", reply_to_message_id=msg_id)
-                    
-                    elif args[0].lower() == 'preview':
-                        with db.get_connection() as conn:
-                            cursor = conn.cursor()
-                            cursor.execute('SELECT message FROM welcome_settings WHERE chat_id = ?', (chat_id_str,))
-                            result = cursor.fetchone()
-                            welcome_text = result['message'] if result else texts['welcome']
-                            
-                            # Get member count
-                            try:
-                                url = f"https://api.telegram.org/bot{TOKEN}/getChatMembersCount"
-                                response = requests.post(url, json={'chat_id': chat_id}, timeout=10)
-                                members_count = response.json().get('result', 0) if response.ok else '?'
-                            except:
-                                members_count = '?'
-                            
-                            preview = welcome_text.replace('{user}', 'Test User')
-                            preview = preview.replace('{first_name}', 'Test')
-                            preview = preview.replace('{username}', '@testuser')
-                            preview = preview.replace('{id}', '123456789')
-                            preview = preview.replace('{group}', msg['chat'].get('title', 'Group'))
-                            preview = preview.replace('{members}', str(members_count))
-                            
-                            send_message(chat_id, texts['welcome_preview'] + preview, 
-                                       reply_to_message_id=msg_id)
                     
                     elif args[0].lower() == 'reset':
                         with db.get_connection() as conn:
@@ -1191,7 +1001,7 @@ def index():
                 elif not is_admin(chat_id, user_id):
                     send_message(chat_id, texts['admin_only'], reply_to_message_id=msg_id)
                 elif not args:
-                    send_message(chat_id, texts['rules_usage'], reply_to_message_id=msg_id)
+                    send_message(chat_id, "📝 Usage: /setrules <rules>", reply_to_message_id=msg_id)
                 else:
                     rules_text = ' '.join(args)
                     with db.get_connection() as conn:
@@ -1220,7 +1030,7 @@ def index():
                 elif not is_admin(chat_id, user_id):
                     send_message(chat_id, texts['admin_only'], reply_to_message_id=msg_id)
                 elif len(args) < 2:
-                    send_message(chat_id, texts['note_usage'], reply_to_message_id=msg_id)
+                    send_message(chat_id, "📝 Usage: /note <name> <content>", reply_to_message_id=msg_id)
                 else:
                     name = args[0].lower()
                     content = ' '.join(args[1:])
@@ -1234,7 +1044,7 @@ def index():
             
             elif cmd == 'get':
                 if not args:
-                    send_message(chat_id, texts['note_usage'], reply_to_message_id=msg_id)
+                    send_message(chat_id, "📝 Usage: /get <name>", reply_to_message_id=msg_id)
                 else:
                     name = args[0].lower()
                     with db.get_connection() as conn:
@@ -1264,7 +1074,7 @@ def index():
                 if not is_admin(chat_id, user_id):
                     send_message(chat_id, texts['admin_only'], reply_to_message_id=msg_id)
                 elif not args:
-                    send_message(chat_id, texts['note_usage'], reply_to_message_id=msg_id)
+                    send_message(chat_id, "📝 Usage: /delnote <name>", reply_to_message_id=msg_id)
                 else:
                     name = args[0].lower()
                     with db.get_connection() as conn:
@@ -1391,7 +1201,7 @@ def index():
             # ========== PIN ==========
             elif cmd == 'pin':
                 if not msg.get('reply_to_message'):
-                    send_message(chat_id, texts['pin_usage'], reply_to_message_id=msg_id)
+                    send_message(chat_id, "📍 Usage: /pin (reply to a message)", reply_to_message_id=msg_id)
                 elif not is_admin(chat_id, user_id):
                     send_message(chat_id, texts['admin_only'], reply_to_message_id=msg_id)
                 else:
@@ -1434,7 +1244,7 @@ def index():
                 if not is_admin(chat_id, user_id):
                     send_message(chat_id, texts['admin_only'], reply_to_message_id=msg_id)
                 elif not args or args[0] not in ['en', 'sq', 'mk']:
-                    send_message(chat_id, texts['language_usage'], reply_to_message_id=msg_id)
+                    send_message(chat_id, "🌐 Usage: /language <en/sq/mk>", reply_to_message_id=msg_id)
                 else:
                     new_lang = args[0]
                     set_chat_language(chat_id, new_lang)
@@ -1469,37 +1279,11 @@ def index():
                         f"{texts['stats']}"
                         f"🔍 Filters: {filters_count}\n"
                         f"📝 Notes: {notes_count}\n"
-                        f"⚠️ Active warnings: {warnings_count}\n"
+                        f"⚠️ Warnings: {warnings_count}\n"
                         f"🔇 Muted: {muted_count}\n"
                         f"🚫 Banned: {banned_count}"
                     )
                     send_message(chat_id, stats_text, reply_to_message_id=msg_id)
-            
-            # ========== DISABLE/ENABLE COMMANDS ==========
-            elif cmd == 'disable':
-                if not is_admin(chat_id, user_id):
-                    send_message(chat_id, texts['admin_only'], reply_to_message_id=msg_id)
-                elif not args:
-                    send_message(chat_id, "📝 Usage: /disable <command>", reply_to_message_id=msg_id)
-                else:
-                    command = args[0].lower().replace('/', '')
-                    if command in ['enable', 'disable', 'help', 'start', 'info']:
-                        send_message(chat_id, "❌ Cannot disable this command!", reply_to_message_id=msg_id)
-                    else:
-                        disable_command(chat_id, command)
-                        send_message(chat_id, f"✅ Command '/{command}' has been disabled!", 
-                                   reply_to_message_id=msg_id)
-            
-            elif cmd == 'enable':
-                if not is_admin(chat_id, user_id):
-                    send_message(chat_id, texts['admin_only'], reply_to_message_id=msg_id)
-                elif not args:
-                    send_message(chat_id, "📝 Usage: /enable <command>", reply_to_message_id=msg_id)
-                else:
-                    command = args[0].lower().replace('/', '')
-                    enable_command(chat_id, command)
-                    send_message(chat_id, f"✅ Command '/{command}' has been enabled!", 
-                               reply_to_message_id=msg_id)
         
         # ========== FILTERS (LIKE ROSE) ==========
         elif text:
@@ -1517,7 +1301,7 @@ def index():
                 
                 # Check filters
                 cursor.execute('''
-                    SELECT keyword, response, is_photo, is_gif, is_sticker, is_video, media_url 
+                    SELECT keyword, response, is_photo, is_gif, media_url 
                     FROM filters 
                     WHERE chat_id = ?
                     ORDER BY length(keyword) DESC
@@ -1535,13 +1319,6 @@ def index():
                         elif filter_item['is_photo'] and filter_item['media_url']:
                             caption = filter_item['response'] if filter_item['response'] else None
                             send_photo(chat_id, filter_item['media_url'], caption=caption, 
-                                     reply_to_message_id=msg_id)
-                        elif filter_item['is_sticker'] and filter_item['media_url']:
-                            send_sticker(chat_id, filter_item['media_url'], 
-                                       reply_to_message_id=msg_id)
-                        elif filter_item['is_video'] and filter_item['media_url']:
-                            caption = filter_item['response'] if filter_item['response'] else None
-                            send_video(chat_id, filter_item['media_url'], caption=caption, 
                                      reply_to_message_id=msg_id)
                         else:
                             if filter_item['response']:
