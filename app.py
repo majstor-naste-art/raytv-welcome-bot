@@ -2,7 +2,6 @@ import os
 import json
 import requests
 import logging
-import ast
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify
 
@@ -14,7 +13,7 @@ TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Ruajtja e të dhënave (përdorim dictionary të thjeshtë)
+# Ruajtja e të dhënave
 welcome_messages = {}
 rules = {}
 filters = {}
@@ -109,7 +108,8 @@ def index():
         return jsonify({
             'status': 'running',
             'token_configured': bool(TOKEN),
-            'message': 'Bot is active'
+            'message': 'Bot is active',
+            'python_version': '3.12.8'
         })
     
     try:
@@ -310,6 +310,4 @@ def index():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
-    # Për testim lokal, përdor debug=True
-    # Për production, debug=False
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port)
