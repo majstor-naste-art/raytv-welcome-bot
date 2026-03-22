@@ -92,7 +92,7 @@ class Database:
                 )
             ''')
             
-            # Tabela për filtrat (tani me mbështetje për foto)
+            # Tabela për filtrat (me mbështetje për foto dhe GIF)
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS filters (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -100,7 +100,9 @@ class Database:
                     keyword TEXT,
                     response TEXT,
                     is_photo BOOLEAN DEFAULT 0,
+                    is_gif BOOLEAN DEFAULT 0,
                     photo_url TEXT,
+                    gif_url TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(chat_id, keyword)
                 )
@@ -132,13 +134,13 @@ class Database:
 db = Database()
 
 # ==================== FUNKSIONET TELEGRAM ====================
-def send_message(chat_id: int, text: str, reply_to_message_id: Optional[int] = None):
+def send_message(chat_id: int, text: str, reply_to_message_id: Optional[int] = None, parse_mode: str = 'HTML'):
     """Dërgon mesazh tekst"""
     if not TOKEN:
         return False
     
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    payload = {'chat_id': chat_id, 'text': text, 'parse_mode': 'HTML'}
+    payload = {'chat_id': chat_id, 'text': text, 'parse_mode': parse_mode}
     if reply_to_message_id:
         payload['reply_to_message_id'] = reply_to_message_id
     
@@ -171,6 +173,30 @@ def send_photo(chat_id: int, photo_url: str, caption: str = None, reply_to_messa
         return response.ok
     except Exception as e:
         logger.error(f"Error sending photo: {e}")
+        return False
+
+def send_gif(chat_id: int, gif_url: str, caption: str = None, reply_to_message_id: Optional[int] = None):
+    """Dërgon GIF/animacion"""
+    if not TOKEN:
+        return False
+    
+    url = f"https://api.telegram.org/bot{TOKEN}/sendAnimation"
+    payload = {
+        'chat_id': chat_id,
+        'animation': gif_url
+    }
+    if caption:
+        payload['caption'] = caption
+    if reply_to_message_id:
+        payload['reply_to_message_id'] = reply_to_message_id
+    
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+        if not response.ok:
+            logger.error(f"Error sending GIF: {response.text}")
+        return response.ok
+    except Exception as e:
+        logger.error(f"Error sending GIF: {e}")
         return False
 
 def delete_message(chat_id: int, message_id: int):
@@ -250,14 +276,16 @@ LANGUAGES = {
         'admin_only': "👑 Vetëm administratorët!",
         'group_only': "⚠️ Funksionon vetëm në grupe!",
         'need_reply': "⚠️ Përgjigjuni mesazhit!",
-        'filter_usage': "📝 Përdorimi për tekst: /setfilter <fjalë> <përgjigje>\n📸 Përdorimi për foto: /setfilter <fjalë> photo:<URL_fotos>\n\nShembull: /setfilter mirmengjes photo:https://i.imgur.com/morning.jpg Mirmëngjesi!",
+        'filter_usage': "📝 **Përdorimi i /setfilter:**\n\n**Për tekst:**\n/setfilter fjalë përgjigje\n\n**Për foto:**\n/setfilter fjalë photo:URL_foto\n\n**Për GIF:**\n/setfilter fjalë gif:URL_GIF\n\n**Shembuj:**\n/setfilter dobro vecer gif:https://media.tenor.com/example.gif\n/setfilter mirmengjes photo:https://i.imgur.com/morning.jpg\n/setfilter hello Përshëndetje!",
         'filter_set_text': "✅ Filtri për '{word}' u vendos!",
         'filter_set_photo': "✅ Filtri për '{word}' u vendos me foto!",
+        'filter_set_gif': "✅ Filtri për '{word}' u vendos me GIF!",
         'filter_deleted': "✅ Filtri për '{word}' u fshi!",
         'no_filters': "ℹ️ Nuk ka filtra të vendosur.",
         'filters_list': "🔍 **Filtrat e aktivizuar:**\n\n",
         'muted_warning': "🔇 Ju jeni të heshtur! Nuk mund të dërgoni mesazhe.",
         'error_general': "❌ Ndodhi një gabim!",
+        'stats': "📊 **Statistikat e Grupit**\n\n",
     },
     'mk': {
         'welcome': "👋 Добредојде во групата!",
@@ -271,14 +299,16 @@ LANGUAGES = {
         'admin_only': "👑 Само администратори!",
         'group_only': "⚠️ Функционира само во групи!",
         'need_reply': "⚠️ Одговорете на пораката!",
-        'filter_usage': "📝 Употреба за текст: /setfilter <збор> <одговор>\n📸 Употреба за слика: /setfilter <збор> photo:<URL_на_слика>\n\nПример: /setfilter доброутро photo:https://i.imgur.com/morning.jpg Добро утро!",
+        'filter_usage': "📝 **Употреба на /setfilter:**\n\n**За текст:**\n/setfilter збор одговор\n\n**За слика:**\n/setfilter збор photo:URL_слика\n\n**За GIF:**\n/setfilter збор gif:URL_GIF\n\n**Примери:**\n/setfilter добровечер gif:https://media.tenor.com/example.gif\n/setfilter доброутро photo:https://i.imgur.com/morning.jpg\n/setfilter здраво Здраво!",
         'filter_set_text': "✅ Филтерот за '{word}' е поставен!",
         'filter_set_photo': "✅ Филтерот за '{word}' е поставен со слика!",
+        'filter_set_gif': "✅ Филтерот за '{word}' е поставен со GIF!",
         'filter_deleted': "✅ Филтерот за '{word}' е избришан!",
         'no_filters': "ℹ️ Нема поставено филтри.",
         'filters_list': "🔍 **Активни филтри:**\n\n",
         'muted_warning': "🔇 Вие сте занемени! Не можете да испраќате пораки.",
         'error_general': "❌ Се случи грешка!",
+        'stats': "📊 **Статистики на групата**\n\n",
     }
 }
 
@@ -289,8 +319,8 @@ def index():
         return jsonify({
             'status': 'running',
             'token_configured': bool(TOKEN),
-            'version': '2.1.0',
-            'features': ['text_filters', 'photo_filters', 'welcome', 'rules', 'moderation']
+            'version': '2.2.0',
+            'features': ['text_filters', 'photo_filters', 'gif_filters', 'welcome', 'rules', 'moderation']
         })
     
     if not TOKEN:
@@ -360,7 +390,7 @@ def index():
             # KOMANDA /start DHE /help
             if cmd == '/start' or cmd == '/help':
                 help_text = (
-                    "🤖 **Bot Menaxhimi i Grupeve v2.1**\n\n"
+                    "🤖 **Bot Menaxhimi i Grupeve v2.2**\n\n"
                     "📋 **Komandat:**\n\n"
                     "**👋 Mirëseardhja:**\n"
                     "/setwelcome [mesazh] - Vendos mirëseardhjen\n"
@@ -368,9 +398,10 @@ def index():
                     "**📜 Rregullat:**\n"
                     "/setrules [rregullat] - Vendos rregullat\n"
                     "/rules - Shfaq rregullat\n\n"
-                    "**🔍 Filtrat (Tekst & Foto):**\n"
+                    "**🔍 Filtrat (Tekst, Foto & GIF):**\n"
                     "/setfilter [fjalë] [përgjigje] - Vendos filtër tekst\n"
                     "/setfilter [fjalë] photo:[URL] - Vendos filtër me foto\n"
+                    "/setfilter [fjalë] gif:[URL] - Vendos filtër me GIF\n"
                     "/delfilter [fjalë] - Fshin filtër\n"
                     "/filters - Shfaq filtrat\n\n"
                     "**⚡ Menaxhimi:**\n"
@@ -443,25 +474,27 @@ def index():
                     else:
                         send_message(chat_id, texts['no_rules'], reply_to_message_id=msg_id)
             
-            # KOMANDA /setfilter (ME MBËSHTETJE PËR FOTO)
+            # KOMANDA /setfilter (ME MBËSHTETJE PËR FOTO DHE GIF)
             elif cmd == '/setfilter':
                 if chat_type not in ['group', 'supergroup']:
                     send_message(chat_id, texts['group_only'], reply_to_message_id=msg_id)
                 elif not is_admin(chat_id, user_id):
                     send_message(chat_id, texts['admin_only'], reply_to_message_id=msg_id)
                 elif len(args) < 2:
-                    send_message(chat_id, texts['filter_usage'], reply_to_message_id=msg_id)
+                    send_message(chat_id, texts['filter_usage'], reply_to_message_id=msg_id, parse_mode='Markdown')
                 else:
                     keyword = args[0].lower()
                     response = ' '.join(args[1:])
                     
-                    # Kontrollo nëse është foto
+                    # Kontrollo llojin e filtrit
                     is_photo = response.startswith('photo:')
+                    is_gif = response.startswith('gif:')
                     photo_url = None
+                    gif_url = None
                     text_response = response
                     
                     if is_photo:
-                        photo_url = response[6:]  # Heq 'photo:' nga fillimi
+                        photo_url = response[6:]  # Heq 'photo:'
                         text_response = None
                         
                         # Validim i thjeshtë i URL-së
@@ -470,15 +503,28 @@ def index():
                                        reply_to_message_id=msg_id)
                             return jsonify({'ok': True})
                     
+                    elif is_gif:
+                        gif_url = response[4:]  # Heq 'gif:'
+                        text_response = None
+                        
+                        # Validim i thjeshtë i URL-së
+                        if not gif_url.startswith(('http://', 'https://')):
+                            send_message(chat_id, "❌ URL e GIF duhet të fillojë me http:// ose https://", 
+                                       reply_to_message_id=msg_id)
+                            return jsonify({'ok': True})
+                    
                     with db.get_connection() as conn:
                         cursor = conn.cursor()
                         cursor.execute('''
-                            INSERT OR REPLACE INTO filters (chat_id, keyword, response, is_photo, photo_url)
-                            VALUES (?, ?, ?, ?, ?)
-                        ''', (chat_id_str, keyword, text_response, is_photo, photo_url))
+                            INSERT OR REPLACE INTO filters (chat_id, keyword, response, is_photo, is_gif, photo_url, gif_url)
+                            VALUES (?, ?, ?, ?, ?, ?, ?)
+                        ''', (chat_id_str, keyword, text_response, is_photo, is_gif, photo_url, gif_url))
                     
                     if is_photo:
                         send_message(chat_id, texts['filter_set_photo'].format(word=keyword), 
+                                   reply_to_message_id=msg_id)
+                    elif is_gif:
+                        send_message(chat_id, texts['filter_set_gif'].format(word=keyword), 
                                    reply_to_message_id=msg_id)
                     else:
                         send_message(chat_id, texts['filter_set_text'].format(word=keyword), 
@@ -505,14 +551,19 @@ def index():
             elif cmd == '/filters':
                 with db.get_connection() as conn:
                     cursor = conn.cursor()
-                    cursor.execute('SELECT keyword, response, is_photo, photo_url FROM filters WHERE chat_id = ?', 
+                    cursor.execute('SELECT keyword, response, is_photo, is_gif, photo_url, gif_url FROM filters WHERE chat_id = ? ORDER BY keyword', 
                                  (chat_id_str,))
                     filters_list = cursor.fetchall()
                     
                     if filters_list:
                         filter_text = texts['filters_list']
                         for f in filters_list:
-                            if f['is_photo']:
+                            if f['is_gif']:
+                                filter_text += f"🎬 • `{f['keyword']}` → [GIF]"
+                                if f['response']:
+                                    filter_text += f" - {f['response']}"
+                                filter_text += "\n"
+                            elif f['is_photo']:
                                 filter_text += f"📸 • `{f['keyword']}` → [Foto]"
                                 if f['response']:
                                     filter_text += f" - {f['response']}"
@@ -650,22 +701,22 @@ def index():
                     with db.get_connection() as conn:
                         cursor = conn.cursor()
                         cursor.execute('SELECT COUNT(*) as c FROM filters WHERE chat_id = ?', (chat_id_str,))
-                        filters_c = cursor.fetchone()['c']
+                        total_filters = cursor.fetchone()['c']
+                        cursor.execute('SELECT COUNT(*) as c FROM filters WHERE chat_id = ? AND is_photo = 1', (chat_id_str,))
+                        photo_filters = cursor.fetchone()['c']
+                        cursor.execute('SELECT COUNT(*) as c FROM filters WHERE chat_id = ? AND is_gif = 1', (chat_id_str,))
+                        gif_filters = cursor.fetchone()['c']
                         cursor.execute('SELECT COUNT(*) as c FROM warnings WHERE chat_id = ?', (chat_id_str,))
                         warns_c = cursor.fetchone()['c']
                         cursor.execute('SELECT COUNT(*) as c FROM muted_users WHERE chat_id = ? AND until > datetime("now")', 
                                      (chat_id_str,))
                         muted_c = cursor.fetchone()['c']
-                        
-                        # Numri i filtrave me foto
-                        cursor.execute('SELECT COUNT(*) as c FROM filters WHERE chat_id = ? AND is_photo = 1', 
-                                     (chat_id_str,))
-                        photo_filters_c = cursor.fetchone()['c']
                     
                     stats_text = (
-                        f"📊 **Statistikat e Grupit**\n\n"
-                        f"🔍 Filtrat total: {filters_c}\n"
-                        f"📸 Filtrat me foto: {photo_filters_c}\n"
+                        f"{texts['stats']}"
+                        f"🔍 Filtrat total: {total_filters}\n"
+                        f"📸 Filtrat me foto: {photo_filters}\n"
+                        f"🎬 Filtrat me GIF: {gif_filters}\n"
                         f"⚠️ Paralajmërime aktive: {warns_c}\n"
                         f"🔇 Të heshtur: {muted_c}"
                     )
@@ -686,9 +737,9 @@ def index():
                     send_message(chat_id, texts['muted_warning'], reply_to_message_id=msg_id)
                     return jsonify({'ok': True})
                 
-                # Kontrollo filtrat (përfshirë fotot)
+                # Kontrollo filtrat (përfshirë foto dhe GIF)
                 cursor.execute('''
-                    SELECT keyword, response, is_photo, photo_url 
+                    SELECT keyword, response, is_photo, is_gif, photo_url, gif_url 
                     FROM filters 
                     WHERE chat_id = ?
                     ORDER BY keyword
@@ -701,15 +752,21 @@ def index():
                         # Fshi mesazhin origjinal
                         delete_message(chat_id, msg_id)
                         
-                        # Dërgo përgjigjen (tekst ose foto)
-                        if filter_item['is_photo'] and filter_item['photo_url']:
-                            # Dërgo foto
+                        # Dërgo përgjigjen sipas llojit (me reply)
+                        if filter_item['is_gif'] and filter_item['gif_url']:
+                            # Dërgo GIF me reply
+                            caption = filter_item['response'] if filter_item['response'] else None
+                            send_gif(chat_id, filter_item['gif_url'], 
+                                    caption=caption, 
+                                    reply_to_message_id=msg_id)
+                        elif filter_item['is_photo'] and filter_item['photo_url']:
+                            # Dërgo foto me reply
                             caption = filter_item['response'] if filter_item['response'] else None
                             send_photo(chat_id, filter_item['photo_url'], 
                                       caption=caption, 
                                       reply_to_message_id=msg_id)
                         else:
-                            # Dërgo tekst
+                            # Dërgo tekst me reply
                             if filter_item['response']:
                                 send_message(chat_id, f"⚠️ {filter_item['response']}", 
                                            reply_to_message_id=msg_id)
@@ -731,6 +788,6 @@ if __name__ == '__main__':
     
     logger.info(f"Starting bot on port {port}")
     logger.info(f"Token configured: {bool(TOKEN)}")
-    logger.info("Bot supports text and photo filters!")
+    logger.info("Bot supports text, photo and GIF filters with reply!")
     
     app.run(host='0.0.0.0', port=port, debug=False)
