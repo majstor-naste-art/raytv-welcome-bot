@@ -55,6 +55,27 @@ LANGUAGES = {
     }
 }
 
+def get_update_data():
+    """Merr të dhënat e update pavarësisht Content-Type"""
+    if request.method != 'POST':
+        return None
+    
+    # Provo të marrësh JSON
+    if request.is_json:
+        return request.get_json()
+    
+    # Provo të marrësh form data
+    if request.form:
+        return request.form.to_dict()
+    
+    # Provo të marrësh raw data
+    try:
+        return json.loads(request.get_data(as_text=True))
+    except:
+        pass
+    
+    return None
+
 def get_lang(chat_id: str) -> str:
     """Merr gjuhën e grupit"""
     return data.group_languages.get(chat_id, 'sq')
@@ -153,7 +174,9 @@ def index():
         })
     
     try:
-        update = request.get_json()
+        # Merr të dhënat pavarësisht Content-Type
+        update = get_update_data()
+        
         if not update or 'message' not in update:
             return jsonify({'ok': True})
         
@@ -168,6 +191,8 @@ def index():
         
         chat_id_str = str(chat_id)
         lang = get_lang(chat_id_str)
+        
+        logger.info(f"Processing message from {chat_id}: {text[:50] if text else 'no text'}")
         
         # Anëtarë të rinj
         if 'new_chat_members' in message:
@@ -398,7 +423,7 @@ def index():
 def callback():
     """Për butonat inline"""
     try:
-        data_cb = request.get_json()
+        data_cb = get_update_data()
         if data_cb and 'callback_query' in data_cb:
             query = data_cb['callback_query']
             chat_id = query['message']['chat']['id']
